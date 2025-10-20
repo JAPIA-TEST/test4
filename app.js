@@ -187,8 +187,12 @@ return true;
 
 $("#submitBtn").addEventListener("click", ()=>{
 if(!saveSelection()) return;
-
 // 採点
+let correct = 0;
+for(const q of QUESTIONS){
+ if(typeof state.answers[q.id] !== 'number') continue;
+ if(q.answer.includes(state.answers[q.id])) correct++;
+}
 if(typeof state.answers[q.id] !== 'number') continue;
 if(q.answer.includes(state.answers[q.id])) correct++;
 }
@@ -296,5 +300,6 @@ navigate();
 
 // 検定ページ直リンク対策：ロード時にプログレスバー初期化
 $("#progressBar").style.width = "0%";
+
 
 
