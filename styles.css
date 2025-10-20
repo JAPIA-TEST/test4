@@ -97,3 +97,24 @@ input:focus{box-shadow:0 0 0 4px var(--ring);}
 
 canvas{max-width:100%; border-radius:16px; border:1px dashed rgba(255,255,255,.25)}
 footer{opacity:.65; text-align:center; padding:28px 0 45px}
+
+/* ===== exam-extended ===== */
+.hidden{display:none !important}
+.card.inner{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.1); margin-top:12px}
+.grid4{display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:12px}
+@media (max-width:900px){ .grid4{grid-template-columns:1fr 1fr} }
+@media (max-width:520px){ .grid4{grid-template-columns:1fr} }
+
+.grade{
+  padding:14px; border-radius:14px; border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04); cursor:pointer; transition:.15s;
+}
+.grade:hover{outline:3px solid rgba(108,140,255,.35); border-color:#6c8cff55}
+.grade.active{outline:3px solid var(--accent); border-color:var(--accent)}
+.badge{display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); font-size:12px}
+.hud{display:flex; gap:10px; align-items:center; margin-bottom:8px; flex-wrap:wrap}
+.choices{display:grid; gap:10px; margin-top:10px}
+.choice{padding:10px 12px; border:1px solid rgba(255,255,255,.14); border-radius:12px; background:rgba(0,0,0,.15); cursor:pointer}
+.choice:hover{background:rgba(255,255,255,.08)}
+.choice.selected{border-color:var(--accent); background:rgba(108,140,255,.15)}
+.small{font-size:12px}
