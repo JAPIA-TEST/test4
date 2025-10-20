@@ -297,4 +297,10 @@ navigate();
 
 // 検定ページ直リンク対策：ロード時にプログレスバー初期化
 $("#progressBar").style.width = "0%";
+// 初期化の最後
+document.querySelector("#year").textContent = new Date().getFullYear();
+updateUserBadge();
+navigate();
+document.querySelector("#progressBar").style.width = "0%";
+
 
