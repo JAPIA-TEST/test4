@@ -1,96 +1,99 @@
 :root{
---bg: #0f1226;
---card: #161a39;
---muted: #aab1ff;
---text: #f7f8ff;
---accent: #6c8cff;
---accent-2: #9ad4ff;
---ok: #5dd39e;
---warn: #ffb454;
---danger: #ff6b6b;
---ring: rgba(156, 201, 255, .45);
---shadow: 0 10px 30px rgba(0,0,0,.25), 0 4px 14px rgba(108,140,255,.18);
---radius: 20px;
+  --bg: #0f1226;
+  --card: #161a39;
+  --muted: #aab1ff;
+  --text: #f7f8ff;
+  --accent: #6c8cff;
+  --accent-2: #9ad4ff;
+  --ok: #5dd39e;
+  --warn: #ffb454;
+  --danger: #ff6b6b;
+  --ring: rgba(156, 201, 255, .45);
+  --shadow: 0 10px 30px rgba(0,0,0,.25), 0 4px 14px rgba(108,140,255,.18);
+  --radius: 20px;
 }
-*{box-sizing: border-box}
-html, body{height:100%}
-body{
-margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "YuGothic", Meiryo, sans-serif;
-color:var(--text); background: radial-gradient(1200px 900px at 80% -10%, #1f2360 0%, rgba(31,35,96,0) 60%),
-radial-gradient(1000px 700px at -10% 20%, #224f80 0%, rgba(34,79,128,0) 55%),
-var(--bg);
+*{box-sizing:border-box}
+html,body{height:100%}
+
+/* ダーク背景（拡張対策で特異性＋importantを最小限付与） */
+body#app-root{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+               "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic",
+               "YuGothic", Meiryo, sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 900px at 80% -10%, #1f2360 0%, rgba(31,35,96,0) 60%),
+    radial-gradient(1000px 700px at -10% 20%, #224f80 0%, rgba(34,79,128,0) 55%),
+    var(--bg) !important;
+  background-attachment: fixed;
 }
+
 header{
-position:sticky; top:0; backdrop-filter: saturate(140%) blur(6px);
-background: rgba(15,18,38,.55);
-border-bottom: 1px solid rgba(255,255,255,.08);
-z-index:10;
+  position:sticky; top:0;
+  backdrop-filter:saturate(140%) blur(6px);
+  background:rgba(15,18,38,.55);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  z-index:10;
 }
 .nav{max-width:1100px; margin:0 auto; padding:14px 20px; display:flex; gap:14px; align-items:center;}
 .brand{display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.3px}
-.brand .logo{width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow);}
+.brand .logo{width:32px; height:32px; display:grid; place-items:center; border-radius:10px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); box-shadow:var(--shadow);}
 .spacer{flex:1}
 .nav a{color:var(--text); text-decoration:none; padding:8px 12px; border-radius:12px; border:1px solid transparent}
-.nav a.active, .nav a:hover{background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12)}
+.nav a.active, .nav a:hover{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.12)}
 
-main{max-width: 1100px; margin: 32px auto 80px; padding: 0 20px}
+main{max-width:1100px; margin:32px auto 80px; padding:0 20px}
 
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+}
+.card.pad{padding:24px}
 
-.card{background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.12);
-border-radius: var(--radius); box-shadow: var(--shadow);}
-.card.pad{padding: 24px}
-
-
-.hero{display:grid; grid-template-columns: 1.2fr 1fr; gap:24px; align-items:center}
-.hero .title{font-size: clamp(26px, 3.4vw, 40px); line-height:1.15; margin: 0 0 8px}
-.hero p{margin: 0 0 18px; color: var(--muted)}
+.hero{display:grid; grid-template-columns:1.2fr 1fr; gap:24px; align-items:center}
+.hero .title{font-size:clamp(26px,3.4vw,40px); line-height:1.15; margin:0 0 8px}
+.hero p{margin:0 0 18px; color:var(--muted)}
 .hero .cta{display:flex; gap:12px; flex-wrap:wrap}
 
+.btn{appearance:none; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.06); color:var(--text); border-radius:12px; padding:10px 14px; cursor:pointer; transition:.2s transform, .2s background}
+.btn:hover{transform:translateY(-1px); background:rgba(255,255,255,.1)}
+.btn.primary{background:linear-gradient(180deg, var(--accent), #4d6dff); border-color:rgba(255,255,255,.18)}
+.btn.good{background:linear-gradient(180deg, #3fbf88, #2f9d73)}
 
-.btn{appearance:none; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color:var(--text); border-radius: 12px; padding: 10px 14px; cursor:pointer; transition: .2s transform, .2s background}
-.btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.1)}
-.btn.primary{background: linear-gradient(180deg, var(--accent), #4d6dff); border-color: rgba(255,255,255,.18)}
-.btn.good{background: linear-gradient(180deg, #3fbf88, #2f9d73)}
-
-
-.grid-3{display:grid; grid-template-columns: repeat(3, 1fr); gap:20px}
-@media (max-width: 900px){ .hero{grid-template-columns: 1fr} .grid-3{grid-template-columns: 1fr} }
-
+.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+@media (max-width:900px){ .hero{grid-template-columns:1fr} .grid-3{grid-template-columns:1fr} }
 
 .muted{color:var(--muted)}
-.tag{display:inline-flex; align-items:center; gap:8px; font-size:12px; padding:6px 10px; border:1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(255,255,255,.06)}
-
+.tag{display:inline-flex; align-items:center; gap:8px; font-size:12px; padding:6px 10px; border:1px solid rgba(255,255,255,.16); border-radius:999px; background:rgba(255,255,255,.06)}
 
 form{display:grid; gap:12px}
-label{font-size:14px; color: var(--muted)}
+label{font-size:14px; color:var(--muted)}
 input[type="text"], input[type="password"], select{
-width:100%; padding: 12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.16); background: rgba(8,10,28,.55); color: var(--text);
-outline: none; box-shadow: inset 0 0 0 1px transparent;
+  width:100%; padding:12px 14px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.16); background:rgba(8,10,28,.55); color:var(--text);
+  outline:none; box-shadow:inset 0 0 0 1px transparent;
 }
-input:focus{box-shadow: 0 0 0 4px var(--ring);}
-
+input:focus{box-shadow:0 0 0 4px var(--ring);}
 
 .row{display:flex; gap:10px; align-items:center}
 .right{margin-left:auto}
 
+.progress{height:10px; background:rgba(255,255,255,.1); border-radius:999px; overflow:hidden}
+.progress > span{display:block; height:100%; width:0; background:linear-gradient(90deg, var(--accent), var(--accent-2));}
 
-.progress{height:10px; background: rgba(255,255,255,.1); border-radius:999px; overflow:hidden}
-.progress > span{display:block; height:100%; width:0; background: linear-gradient(90deg, var(--accent), var(--accent-2));}
-
-
-.question{padding: 16px; border:1px solid rgba(255,255,255,.14); border-radius: 14px; background: rgba(255,255,255,.04)}
+.question{padding:16px; border:1px solid rgba(255,255,255,.14); border-radius:14px; background:rgba(255,255,255,.04)}
 .question h3{margin:0 0 8px}
 
-
 .choices{display:grid; gap:10px; margin-top:10px}
-.choice{display:flex; gap:10px; align-items:flex-start; border:1px solid rgba(255,255,255,.14); padding:10px; border-radius:12px; cursor:pointer; background: rgba(0,0,0,.15)}
+.choice{display:flex; gap:10px; align-items:flex-start; border:1px solid rgba(255,255,255,.14); padding:10px; border-radius:12px; cursor:pointer; background:rgba(0,0,0,.15)}
 .choice input{margin-top:3px}
 
-
 .result{display:none; margin-top:16px; padding:16px; border-radius:14px}
-.result.pass{display:block; background: rgba(93,211,158,.15); border: 1px solid rgba(93,211,158,.45)}
-.result.fail{display:block; background: rgba(255,107,107,.15); border: 1px solid rgba(255,107,107,.45)}
+.result.pass{display:block; background:rgba(93,211,158,.15); border:1px solid rgba(93,211,158,.45)}
+.result.fail{display:block; background:rgba(255,107,107,.15); border:1px solid rgba(255,107,107,.45)}
 
-
-canvas{max-width:100%; border-radius: 16px; border:1px dashed rgba(255,255,255,.25)}
+canvas{max-width:100%; border-radius:16px; border:1px dashed rgba(255,255,255,.25)}
 footer{opacity:.65; text-align:center; padding:28px 0 45px}
