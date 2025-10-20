@@ -74,7 +74,7 @@ state.answers = {}; state.current = 0; state.score = null; save();
 $("#resultBox").className = "result"; $("#resultBox").textContent = "";
 }
 
-/ -----------------------------
+// -----------------------------
 // ユーザー表示
 // -----------------------------
 function updateUserBadge(){
@@ -296,4 +296,5 @@ navigate();
 
 // 検定ページ直リンク対策：ロード時にプログレスバー初期化
 $("#progressBar").style.width = "0%";
+
 
