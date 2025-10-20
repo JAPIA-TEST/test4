@@ -303,4 +303,264 @@ updateUserBadge();
 navigate();
 document.querySelector("#progressBar").style.width = "0%";
 
+/* =========================
+   Exam extended (CSV + Grade + HUD)
+   元: index(20).html の試験ページを移植
+   ========================= */
+
+// ---- Core State ----
+window.questions = window.questions || [];
+window.dataReady = false;
+window.selectedGrade = window.selectedGrade || 0;
+let bank = [], order = [], current = 0, answers = {};
+
+// ---- CSV Parsers ----
+function parseCSV(str){
+  const out=[]; let row=[], cur='', q=false;
+  for(let i=0;i<str.length;i++){
+    const ch=str[i], nx=str[i+1];
+    if(q){
+      if(ch=='"' && nx=='"'){ cur+='"'; i++; }
+      else if(ch=='"'){ q=false; }
+      else { cur+=ch; }
+    }else{
+      if(ch=='"'){ q=true; }
+      else if(ch==','){ row.push(cur); cur=''; }
+      else if(ch=='\n'){ row.push(cur); out.push(row); row=[]; cur=''; }
+      else if(ch=='\r'){ /* skip */ }
+      else { cur+=ch; }
+    }
+  }
+  row.push(cur); out.push(row);
+  return out.filter(r=>r.some(c=>String(c).trim()!==''));
+}
+
+function rowsToQuestions(rows){
+  if(!rows.length) return [];
+  const header = rows[0].map(h=>String(h||'').trim());
+  const norm = s => String(s||'').toLowerCase().replace(/\s+/g,'').replace(/　/g,'');
+  const findAny = cands => header.findIndex(h => cands.some(k => norm(h).includes(k)));
+  const col = {
+    id:     findAny(['id','識別','番号']),
+    grade:  findAny(['grade','級','レベル','level','等級']),
+    q:      findAny(['q','question','問題','設問','問']),
+    c1:     findAny(['choice1','選択肢1','こたえ1','解答1','a)']),
+    c2:     findAny(['choice2','選択肢2','こたえ2','解答2','b)']),
+    c3:     findAny(['choice3','選択肢3','こたえ3','解答3','c)']),
+    c4:     findAny(['choice4','選択肢4','こたえ4','解答4','d)']),
+    c5:     findAny(['choice5','選択肢5','こたえ5','解答5','e)']),
+    c6:     findAny(['choice6','選択肢6','こたえ6','解答6','f)']),
+    answer: findAny(['answer','正解','解答','ans']),
+    exp:    findAny(['exp','解説','説明','comment']),
+    tags:   findAny(['tags','タグ','分類','カテゴリ']),
+  };
+  const hasHeader = col.q !== -1 && (col.c1 !== -1 || col.c2 !== -1);
+  const start = hasHeader ? 1 : 0;
+  const toHalf = s => String(s||'').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0)-0xFEE0));
+  const list = [];
+  for(let r=start; r<rows.length; r++){
+    const row = rows[r];
+    const get = i => (i>=0 && i<row.length) ? String(row[i]||'').trim() : '';
+    const q = get(col.q); if(!q) continue;
+    const choices = [get(col.c1),get(col.c2),get(col.c3),get(col.c4),get(col.c5),get(col.c6)].filter(Boolean);
+    if(choices.length<2) continue;
+    let ansRaw = toHalf(get(col.answer)||'1'); const ansDig = ansRaw.match(/\d+/);
+    const answer = ansDig ? Math.max(0, parseInt(ansDig[0],10)-1) : 0;
+    let gRaw = toHalf(get(col.grade)||'4'); const gDig = gRaw.match(/[1-4]/);
+    const grade = gDig ? parseInt(gDig[0],10) : 4;
+    list.push({ id: get(col.id)||`q${r}`, grade, q, choices, answer });
+  }
+  return list;
+}
+
+// ---- Autoload CSV (UTF-8 / Shift_JIS fallback) ----
+(function(){
+  function stripBOM(s){ return s && s.charCodeAt(0)===0xFEFF ? s.slice(1) : s; }
+  function decodeWithFallback(buf){
+    try{ const u = new TextDecoder('utf-8',{fatal:false}).decode(buf); if(u && u.indexOf('\uFFFD')===-1) return u; }catch(e){}
+    try{ return new TextDecoder('shift_jis',{fatal:false}).decode(buf); }catch(e){}
+    try{ return new TextDecoder('utf-8').decode(buf); }catch(e){ return ''; }
+  }
+  async function fetchCsvTry(files){
+    for(const f of files){
+      try{
+        const res = await fetch(f + '?v=' + Date.now(), {cache:'no-store'});
+        if(res.ok){
+          const buf = await res.arrayBuffer();
+          const txt = decodeWithFallback(buf);
+          if (txt && txt.trim()) return {name:f, text:txt};
+        }
+      }catch(e){ /* ignore */ }
+    }
+    return null;
+  }
+  async function autoload(){
+    const got = await fetchCsvTry(['questions.csv','question.csv']);
+    if(!got){ console.warn('[autoload] CSV not found'); return; }
+    let csv = stripBOM(got.text).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+    const rows = parseCSV(csv);
+    const imported = rowsToQuestions(rows);
+    if(Array.isArray(imported) && imported.length){
+      window.questions.splice(0, window.questions.length, ...imported);
+      window.dataReady = true;
+      const el = document.getElementById('total-count'); if(el) el.textContent = String(imported.length);
+      recountByGrade();
+      console.log(`[autoload] ${got.name}: ${imported.length} questions`);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', autoload); else autoload();
+})();
+
+// ---- UI helpers ----
+function recountByGrade(){
+  const c = {1:0,2:0,3:0,4:0};
+  (window.questions||[]).forEach(q=>{ const g=Number(q.grade); if(g>=1 && g<=4) c[g]++; });
+  const tc = document.getElementById('total-count'); if(tc) tc.textContent = String((window.questions||[]).length || 0);
+  return c;
+}
+function prepareBank(grade){
+  const g = Number(grade||0);
+  bank = (window.questions||[]).filter(q => Number(q.grade) === g);
+  order = bank.map((_,i)=>i);
+  current = 0; answers = {};
+}
+function renderCurrent(){
+  const qi = order[current]; if(qi==null) return;
+  const q = bank[qi];
+  const box = document.getElementById('choices');
+  document.getElementById('qtext').innerHTML = `<strong>Q.</strong> ${q.q}`;
+  box.innerHTML = '';
+  const nextBtn = document.getElementById('btn-next'); if(nextBtn) nextBtn.disabled = true;
+
+  q.choices.forEach((c,idx)=>{
+    const b = document.createElement('button');
+    b.className = 'choice' + (answers[qi]===idx ? ' selected' : '');
+    b.type = 'button';
+    b.textContent = `${idx+1}. ${c}`;
+    b.addEventListener('click', ()=>{
+      answers[qi] = idx;
+      box.querySelectorAll('.choice').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected');
+      if(nextBtn) nextBtn.disabled = false;
+    });
+    box.appendChild(b);
+  });
+
+  // 既回答ならNext有効
+  if(answers.hasOwnProperty(qi) && nextBtn){ nextBtn.disabled = false; }
+  document.getElementById('progress').textContent = `${current+1} / ${order.length}`;
+  const prev = document.getElementById('btn-prev'); if(prev) prev.disabled = (current===0);
+}
+function finish(){
+  let correct = 0;
+  order.forEach(qi => { if(answers[qi] === bank[qi].answer) correct++; });
+  const scorePct = Math.round((correct / order.length) * 100);
+  document.getElementById('score').textContent = `正解数：${correct} / ${order.length}（${scorePct}点）`;
+
+  // 既存の合格証機能へスコアを反映
+  state.score = scorePct;
+  if(scorePct >= PASSING_SCORE){ state.passedAt = new Date().toISOString(); save(); }
+
+  document.getElementById('quiz').classList.add('hidden');
+  document.getElementById('summary').classList.remove('hidden');
+}
+function backToMenu(skipConfirm){
+  if(!skipConfirm && !confirm('試験を中断してメニューに戻ります。進捗は失われます。よろしいですか？')) return;
+  answers = {}; current = 0; order = []; bank = [];
+  document.getElementById('menu').classList.remove('hidden');
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('quiz').classList.add('hidden');
+  document.getElementById('summary').classList.add('hidden');
+}
+
+// ---- bindings ----
+document.addEventListener('DOMContentLoaded', ()=>{
+  // CSV手動読み込み
+  const fi = document.getElementById('file-questions');
+  const btnImport = document.getElementById('btn-import');
+  if(btnImport && fi){
+    btnImport.addEventListener('click', ()=> fi.click());
+    fi.addEventListener('change', async (e)=>{
+      const f = e.target.files && e.target.files[0]; if(!f) return;
+      const buf = await f.arrayBuffer();
+      const dec = new TextDecoder('utf-8');
+      const txt = dec.decode(buf);
+      const rows = parseCSV(txt);
+      const imported = rowsToQuestions(rows);
+      if(imported.length){
+        window.questions.splice(0, window.questions.length, ...imported);
+        window.dataReady = true;
+        recountByGrade();
+        alert(`読み込み完了：${imported.length}問`);
+      }else{
+        alert('CSVの形式を確認してください（問題文と選択肢が必要です）');
+      }
+    });
+  }
+
+  // 級カード
+  document.querySelectorAll('.grade').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      window.selectedGrade = Number(el.dataset.grade||0);
+      document.querySelectorAll('.grade').forEach(x=>x.classList.remove('active'));
+      el.classList.add('active');
+      const lab = document.getElementById('selected-grade-label');
+      if(lab) lab.textContent = '選択中: ' + window.selectedGrade + '級';
+    });
+  });
+
+  // スタート
+  const btnStart = document.getElementById('btn-start');
+  if(btnStart){
+    btnStart.addEventListener('click', (e)=>{
+      e.preventDefault();
+      if(!dataReady || !(window.questions||[]).length){ alert('問題データを読み込み中です'); return; }
+      if(!window.selectedGrade){ alert('級を選んでください'); return; }
+      prepareBank(window.selectedGrade);
+      if(!bank.length){ alert(`${window.selectedGrade}級の問題が0件です`); return; }
+      document.getElementById('menu').classList.add('hidden');
+      document.getElementById('intro').classList.remove('hidden');
+      document.getElementById('quiz').classList.remove('hidden');
+      renderCurrent();
+      // タイマー（級ごと制限時間）—必要なら調整
+      startCountdown();
+    });
+  }
+
+  // 前・次
+  const pb = document.getElementById('btn-prev');
+  const nb = document.getElementById('btn-next');
+  if(pb) pb.addEventListener('click', ()=>{ if(current>0){ current--; renderCurrent(); } });
+  if(nb) nb.addEventListener('click', ()=>{ if(current<order.length-1){ current++; renderCurrent(); } else { stopCountdown(); finish(); } });
+
+  // メニューに戻る
+  const rb = document.getElementById('btn-retry');
+  const back = document.getElementById('btn-back-menu');
+  if(rb) rb.addEventListener('click', ()=> backToMenu(true));
+  if(back) back.addEventListener('click', ()=> backToMenu(false));
+});
+
+// ---- HUD タイマー（級ごとの制限時間）----
+window.TIME_LIMIT_MINUTES = window.TIME_LIMIT_MINUTES || {1:30,2:25,3:20,4:15};
+let _deadlineTs = null, _hudTimer = null;
+function pad(n){ return (n<10?'0':'')+n; }
+function fmt(secs){ secs=Math.max(0,secs|0); return pad(Math.floor(secs/60))+':'+pad(secs%60); }
+function updateHud(){
+  const timeEl = document.getElementById('hud-time');
+  const remEl  = document.getElementById('hud-remaining');
+  const secs = _deadlineTs ? Math.max(0, Math.floor((_deadlineTs-Date.now())/1000)) : 0;
+  if(timeEl) timeEl.textContent = '残り時間: ' + fmt(secs);
+  const total = order.length; const answered = Object.keys(answers).length;
+  if(remEl) remEl.textContent = '残り問題数: ' + Math.max(0, total-answered) + '問';
+  if(secs<=0){ stopCountdown(); finish(); }
+}
+function startCountdown(){
+  const g = Number(window.selectedGrade||0);
+  const min = Number((window.TIME_LIMIT_MINUTES||{})[g] || 20);
+  _deadlineTs = Date.now() + min*60*1000;
+  if(_hudTimer) clearInterval(_hudTimer);
+  _hudTimer = setInterval(updateHud, 1000);
+  updateHud();
+}
+function stopCountdown(){ if(_hudTimer){ clearInterval(_hudTimer); _hudTimer=null; } _deadlineTs=null; }
 
