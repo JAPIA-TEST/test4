@@ -5,22 +5,54 @@ const $ = (sel, parent=document) => parent.querySelector(sel);
 const $$ = (sel, parent=document) => [...parent.querySelectorAll(sel)];
 
 
-const routes = $$("[data-route]").reduce((acc, el) => { acc[el.dataset.route] = el; return acc; }, {});
+let routes = {};
+let routeEls = [];
+
+function buildRoutes() {
+  routeEls = $$("[data-route]");
+  routes = {};
+  routeEls.forEach(el => {
+    routes[el.dataset.route] = el;
+    // 元の表示モードを保存（grid / block など）
+    el.dataset._display = getComputedStyle(el).display || (el.classList.contains("hero") ? "grid" : "block");
+  });
+}
+
+function show(el){ if(el) el.style.display = el.dataset._display || "block"; }
+function hide(el){ if(el) el.style.display = "none"; }
+
 function setActiveLink(){
-$$(".nav a[data-link]").forEach(a=>{
-a.classList.toggle("active", a.getAttribute("href") === location.hash || (location.hash==="#/" && a.getAttribute("href")==="#/"));
-})
+  $$(".nav a[data-link]").forEach(a => {
+    const want = a.getAttribute("href");
+    const cur  = location.hash || "#/";
+    a.classList.toggle("active", want === cur || (cur==="#" && want==="#/"));
+  });
 }
+
 function navigate(){
-const hash = location.hash || "#/";
-Object.values(routes).forEach(sec => sec.style.display = "none");
-const key = hash.replace(/^#/, "");
-const target = routes[key] || routes["/"];
-if (!target) return;                    // ← これで undefined.style を回避
-target.style.display = key === "/" ? "grid" : "block";
-setActiveLink();
-if(key === "/certificate") renderCertificate();
+  if (!routeEls.length) buildRoutes();
+  // いったん全部隠す
+  routeEls.forEach(hide);
+
+  const key = (location.hash || "#/").replace(/^#/, "");
+  // フォールバック（"/" → それも無ければ最初のセクション）
+  const target = routes[key] || routes["/"] || routeEls[0];
+  if (!target) return;
+
+  show(target);
+  setActiveLink();
+
+  // 証書ページに遷移したときだけ生成
+  if (key === "/certificate" && typeof renderCertificate === "function") {
+    renderCertificate();
+  }
 }
+
+// 初期化タイミングをDOM構築後に限定
+document.addEventListener("DOMContentLoaded", () => {
+  buildRoutes();
+  navigate();
+});
 window.addEventListener("hashchange", navigate);
 
 // -----------------------------
