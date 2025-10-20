@@ -185,30 +185,31 @@ return true;
 }
 
 
-$("#submitBtn").addEventListener("click", ()=>{
-if(!saveSelection()) return;
-// 採点
-let correct = 0;
-for(const q of QUESTIONS){
-if(typeof state.answers[q.id] !== 'number') continue;
-if(q.answer.includes(state.answers[q.id])) correct++;
-}
-const score = Math.round((correct / total) * 100);
-state.score = score;
+$("#submitBtn").addEventListener("click", () => {
+  if (!saveSelection()) return;
 
+  // 採点
+  let correct = 0;
+  for (const q of QUESTIONS) {
+    if (typeof state.answers[q.id] !== "number") continue;
+    if (q.answer.includes(state.answers[q.id])) correct++;
+  }
+  const score = Math.round((correct / total) * 100);
+  state.score = score;
 
-const box = $("#resultBox");
-box.className = "result " + (score>=PASSING_SCORE?"pass":"fail");
-box.innerHTML = score>=PASSING_SCORE
-? `<strong>合格！</strong> おめでとうございます。スコア：<strong>${score}点</strong>。<br>合格証ページから証書をダウンロードできます。`
-: `<strong>残念！</strong> スコア：<strong>${score}点</strong>。80点以上で合格です。もう一度挑戦しましょう！`;
+  const box = $("#resultBox");
+  box.className = "result " + (score >= PASSING_SCORE ? "pass" : "fail");
+  box.innerHTML =
+    score >= PASSING_SCORE
+      ? `<strong>合格！</strong> おめでとうございます。スコア：<strong>${score}点</strong>。<br>合格証ページから証書をダウンロードできます。`
+      : `<strong>残念！</strong> スコア：<strong>${score}点</strong>。80点以上で合格です。もう一度挑戦しましょう！`;
 
-
-if(score>=PASSING_SCORE){
-state.passedAt = new Date().toISOString(); save();
-}
-$("#progressBar").style.width = "100%";
-})
+  if (score >= PASSING_SCORE) {
+    state.passedAt = new Date().toISOString();
+    save();
+  }
+  $("#progressBar").style.width = "100%";
+});
 // -----------------------------
 // 合格証の生成(Canvas)
 // -----------------------------
