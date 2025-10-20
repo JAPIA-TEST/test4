@@ -15,7 +15,9 @@ function navigate(){
 const hash = location.hash || "#/";
 Object.values(routes).forEach(sec => sec.style.display = "none");
 const key = hash.replace(/^#/, "");
-(routes[key] || routes["/"]).style.display = "grid";
+const target = routes[key] || routes["/"];
+if (!target) return;                    // ← これで undefined.style を回避
+target.style.display = key === "/" ? "grid" : "block";
 setActiveLink();
 if(key === "/certificate") renderCertificate();
 }
@@ -566,5 +568,6 @@ function startCountdown(){
   updateHud();
 }
 function stopCountdown(){ if(_hudTimer){ clearInterval(_hudTimer); _hudTimer=null; } _deadlineTs=null; }
+
 
 
