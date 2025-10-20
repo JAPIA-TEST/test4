@@ -291,9 +291,12 @@ $("#year").textContent = new Date().getFullYear();
 
 
 // 初期表示
+document.addEventListener("DOMContentLoaded", () => {
 updateUserBadge();
 navigate();
-
+const pb = document.querySelector("#progressBar");
+  if (pb) pb.style.width = "0%";
+});
 
 // 検定ページ直リンク対策：ロード時にプログレスバー初期化
 $("#progressBar").style.width = "0%";
@@ -563,4 +566,5 @@ function startCountdown(){
   updateHud();
 }
 function stopCountdown(){ if(_hudTimer){ clearInterval(_hudTimer); _hudTimer=null; } _deadlineTs=null; }
+
 
