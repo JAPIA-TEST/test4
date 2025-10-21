@@ -446,3 +446,61 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('startExamBtn')?.addEventListener('click', ()=>{
   if (typeof refreshTotal === 'function') refreshTotal();
 }, { once:false });
+
+// =========================
+// /exam で questions.csv を自動読込
+// =========================
+let __csvAutoLoaded = false;
+
+function __basePathForPages(){
+  // 例: /test4/index.html → /test4/
+  const p = location.pathname;
+  return p.endsWith("/") ? p : p.replace(/\/[^/]*$/, "/");
+}
+
+async function __autoLoadCsvOnce(){
+  if (__csvAutoLoaded) return;
+  const base = __basePathForPages();                       // 例: /test4/
+  const candidates = [
+    new URL("questions.csv", location.origin + base).toString(),
+    new URL("question.csv",  location.origin + base).toString()
+  ];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) continue;
+      const buf = await res.arrayBuffer();
+
+      // UTF-8優先, ダメなら Shift_JIS → 最後にUTF-8ゆるデコード
+      let txt;
+      try { const u = new TextDecoder("utf-8",{fatal:false}).decode(buf); if (u && !u.includes("\uFFFD")) txt = u; } catch(e){}
+      if (!txt) { try { txt = new TextDecoder("shift_jis",{fatal:false}).decode(buf); } catch(e){} }
+      if (!txt)   txt = new TextDecoder("utf-8").decode(buf);
+
+      const rows = parseCSV(txt.replace(/\r\n/g,"\n").replace(/\r/g,"\n"));
+      const imported = rowsToQuestions(rows);
+      if (Array.isArray(imported) && imported.length) {
+        // 既存の問題配列を置き換え
+        QUESTIONS = imported;
+        if (typeof refreshTotal === "function") refreshTotal();
+        const s = document.getElementById("csvStatus");
+        if (s) s.textContent = `自動読込：${QUESTIONS.length}問（${url.split("/").pop()}）`;
+        __csvAutoLoaded = true;
+        console.log(`[auto-csv] loaded: ${url} (${QUESTIONS.length}問)`);
+        return;
+      }
+    } catch (e) {
+      console.warn("[auto-csv] fetch error", e);
+    }
+  }
+  console.warn("[auto-csv] CSV not found at", candidates);
+}
+
+// /exam に入った時だけトリガー
+document.addEventListener("DOMContentLoaded", () => {
+  if (location.hash === "#/exam") __autoLoadCsvOnce();
+});
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#/exam") __autoLoadCsvOnce();
+});
