@@ -74,6 +74,10 @@
       <p class="muted">以下のボタンから検定を開始してください。問題は全部で <span id="totalCount">0</span> 問です。</p>
       <div class="row">
         <button class="btn primary" id="startExamBtn">検定を開始</button>
+      <input id="csvFile" type="file" accept=".csv,text/csv" hidden>
+      <button class="btn" id="btnImport" type="button">問題CSVを読み込む</button>
+      <span class="muted" id="csvStatus"></span>
+
         <a class="btn" href="#/certificate">合格証を見る</a>
       </div>
       <hr style="border-color: rgba(255,255,255,.12)"/>
