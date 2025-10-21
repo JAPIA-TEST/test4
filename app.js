@@ -24,7 +24,7 @@ window.addEventListener("hashchange", navigate);
 // -----------------------------
 // 問題データ
 // -----------------------------
-const QUESTIONS = [
+let QUESTIONS = [
 { id:1, title:"HTMLの基本", text:"HTML文書の正しいDoctypeはどれ？", type:"single",
 choices:["<!DOCTYPE html>", "<!DOCTYPE HTML5>", "<doctype html>", "<!HTML>"] , answer:[0] },
 { id:2, title:"CSSの優先順位", text:"優先順位が最も高いのは？", type:"single",
@@ -112,7 +112,13 @@ location.hash = "#/exam";
 // -----------------------------
 // 検定UI
 // -----------------------------
-const total = QUESTIONS.length; $("#totalCount").textContent = total;
+let total = QUESTIONS.length;
+function refreshTotal(){
+  total = QUESTIONS.length;
+  const el = document.getElementById("totalCount");
+  if (el) el.textContent = String(total);
+}
+refreshTotal();
 
 
 function renderQuestion(){
@@ -303,4 +309,140 @@ updateUserBadge();
 navigate();
 document.querySelector("#progressBar").style.width = "0%";
 
+// ========= CSV 取り込み（UTF-8 / Shift_JIS 自動判定） =========
 
+// 1) ざっくりCSVパーサ（"","" エスケープ対応）
+function parseCSV(str){
+  const out=[]; let row=[], cur='', q=false;
+  for(let i=0;i<str.length;i++){
+    const ch=str[i], nx=str[i+1];
+    if(q){
+      if(ch=='"' && nx=='"'){ cur+='"'; i++; }
+      else if(ch=='"'){ q=false; }
+      else { cur+=ch; }
+    }else{
+      if(ch=='"'){ q=true; }
+      else if(ch==','){ row.push(cur); cur=''; }
+      else if(ch=='\n'){ row.push(cur); out.push(row); row=[]; cur=''; }
+      else if(ch=='\r'){ /* ignore */ }
+      else { cur+=ch; }
+    }
+  }
+  row.push(cur); out.push(row);
+  // 空行を除去
+  return out.filter(r => r.some(c => String(c).trim() !== ''));
+}
+
+// 2) rows → 既存UIの QUESTIONS 形式へ（列名はゆるく対応）
+function rowsToQuestions(rows){
+  if(!rows.length) return [];
+  const header = rows[0].map(h => String(h||'').trim());
+  const norm = s => String(s||'').toLowerCase().replace(/\s+/g,'').replace(/　/g,'');
+  const findAny = keys => header.findIndex(h => keys.some(k => norm(h).includes(k)));
+
+  const col = {
+    q:      findAny(['question','問題','設問','問','q']),
+    c1:     findAny(['choice1','選択肢1','a)']),
+    c2:     findAny(['choice2','選択肢2','b)']),
+    c3:     findAny(['choice3','選択肢3','c)']),
+    c4:     findAny(['choice4','選択肢4','d)']),
+    c5:     findAny(['choice5','選択肢5','e)']),
+    c6:     findAny(['choice6','選択肢6','f)']),
+    answer: findAny(['answer','正解','解答','ans'])
+  };
+
+  const hasHeader = col.q !== -1 && (col.c1 !== -1 || col.c2 !== -1);
+  const start = hasHeader ? 1 : 0;
+
+  const toHalf = s => String(s||'').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0)-0xFEE0));
+
+  const list=[];
+  for(let r=start; r<rows.length; r++){
+    const row = rows[r], get = i => (i>=0 && i<row.length) ? String(row[i]||'').trim() : '';
+    const text = get(col.q); if(!text) continue;
+    const choices = [get(col.c1),get(col.c2),get(col.c3),get(col.c4),get(col.c5),get(col.c6)].filter(Boolean);
+    if(choices.length < 2) continue;
+
+    let ansRaw = toHalf(get(col.answer) || '1');
+    const m = ansRaw.match(/\d+/);
+    const ansIndex = m ? Math.max(0, parseInt(m[0],10) - 1) : 0;
+
+    list.push({
+      id: r, title: `Q${r}`, text, type:'single',
+      choices, answer:[ansIndex]
+    });
+  }
+  return list;
+}
+
+// 3) ファイル読込 → QUESTIONS 差し替え
+async function importCsvFile(file){
+  const buf = await file.arrayBuffer();
+
+  // まずUTF-8、ダメならShift_JIS
+  let txt;
+  try{
+    const u = new TextDecoder('utf-8',{fatal:false}).decode(buf);
+    if(u && !u.includes('\uFFFD')) txt = u;
+  }catch(e){}
+  if(!txt){
+    try{ txt = new TextDecoder('shift_jis',{fatal:false}).decode(buf); }catch(e){}
+  }
+  if(!txt){ txt = new TextDecoder('utf-8').decode(buf); }
+
+  const rows = parseCSV(txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n'));
+  const imported = rowsToQuestions(rows);
+  if(!imported.length) throw new Error('CSVの形式を確認してください（問題文と選択肢2つ以上、正解は1始まり）');
+
+  // 上書き
+  QUESTIONS = imported;
+
+  // 件数を最新化
+  if (typeof refreshTotal === 'function') refreshTotal();
+  else {
+    // フォールバック
+    const el = document.getElementById('totalCount');
+    if (el) el.textContent = String(QUESTIONS.length);
+  }
+
+  // 状態表示
+  const sEl = document.getElementById('csvStatus');
+  if(sEl) sEl.textContent = `読み込み完了：${QUESTIONS.length}問`;
+
+  // 進行中の受験をリセット（旧UIの場合）
+  const qa = document.getElementById('questionArea');
+  if (qa) {
+    state.answers = {}; state.current = 0; state.score = null;
+    qa.style.display = 'none';
+    const resultBox = document.getElementById('resultBox');
+    if(resultBox){ resultBox.className='result'; resultBox.textContent=''; }
+  }
+}
+
+// 4) ボタン連携（/exam のUI起動時に使えるように）
+document.addEventListener('DOMContentLoaded', () => {
+  const fileInput = document.getElementById('csvFile');
+  const btnImport = document.getElementById('btnImport');
+  if(btnImport && fileInput){
+    btnImport.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if(!f) return;
+      try{
+        await importCsvFile(f);
+        alert('CSVを読み込みました。検定を開始すると新しい問題が出題されます。');
+      }catch(err){
+        console.error(err);
+        alert('CSVの読み込みに失敗しました：' + err.message);
+      }
+    });
+  }
+
+  // 画面ロード時に件数表示を現在の QUESTIONS で反映
+  if (typeof refreshTotal === 'function') refreshTotal();
+});
+
+// 5) 「検定を開始」を押した瞬間も件数を最新化（任意）
+document.getElementById('startExamBtn')?.addEventListener('click', ()=>{
+  if (typeof refreshTotal === 'function') refreshTotal();
+}, { once:false });
