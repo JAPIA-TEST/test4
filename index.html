@@ -27,69 +27,28 @@
 
   <main>
     <!-- Home -->
-   <section class="card pad" data-route="/exam" style="display:none">
-  <div class="row" style="justify-content:space-between; gap:12px">
-    <h2 style="margin:0">検定ページ</h2>
-    <span class="tag">CSV対応・級選択</span>
-  </div>
-  <p class="muted">「1級（難）〜4級（入門）」を選んで開始。<code>questions.csv</code> または <code>question.csv</code> があれば自動読込します。</p>
-
-  <!-- ▼ メニュー -->
-  <section class="card inner" id="menu">
-    <h3 style="margin-top:0">級を選んでスタート</h3>
-    <div class="grid4" id="grade-list">
-      <div class="grade" data-grade="1"><span class="badge">1級</span><h4>エキスパート</h4><div class="small muted">応用・難問中心</div></div>
-      <div class="grade" data-grade="2"><span class="badge">2級</span><h4>上級</h4><div class="small muted">標準＋やや難</div></div>
-      <div class="grade" data-grade="3"><span class="badge">3級</span><h4>中級</h4><div class="small muted">基礎の確認</div></div>
-      <div class="grade" data-grade="4"><span class="badge">4級</span><h4>入門</h4><div class="small muted">初めての方に</div></div>
-    </div>
-
-    <div class="row" style="margin-top:12px;">
-      <button class="btn primary" id="btn-start" type="button">この級で受験を開始</button>
-      <input id="file-questions" type="file" accept=".csv,text/csv" style="display:none">
-      <button class="btn" id="btn-import" type="button" title="Excelから書き出したCSVを読み込む">問題CSVを読み込む</button>
-      <span class="muted" id="selected-grade-label"></span>
-      <span class="spacer"></span>
-      <span class="tag">総問題数: <span id="total-count">0</span></span>
-    </div>
-  </section>
-
-  <!-- ▼ 説明 -->
-  <section id="intro" class="card inner hidden">
-    <div class="muted">説明：各設問に回答してください（全問出題）。</div>
-  </section>
-
-  <!-- ▼ 受験画面 -->
-  <section id="quiz" class="card inner hidden">
-    <div id="hud" class="hud">
-      <span id="hud-time" class="badge">残り時間: 00:00</span>
-      <span id="hud-remaining" class="badge">残り問題数: 0問</span>
-    </div>
-
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;">
-      <button class="btn" id="btn-back-menu" type="button">メニューに戻る</button>
-    </div>
-
-    <div id="qtext"><strong>Q.</strong> …</div>
-    <div class="choices" id="choices"></div>
-
-    <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-      <button id="btn-prev" class="btn" type="button" disabled>前の問題へ</button>
-      <button class="btn primary" id="btn-next" type="button">次へ</button>
-      <span class="muted" id="progress">0 / 0</span>
-    </div>
-  </section>
-
-  <!-- ▼ 結果 -->
-  <section id="summary" class="card inner hidden">
-    <h3 style="margin-top:0">結果</h3>
-    <div id="score"></div>
-    <div style="margin-top:12px;">
-      <button class="btn" id="btn-retry" type="button">メニューに戻る</button>
-      <a class="btn" href="#/certificate">合格証を見る</a>
-    </div>
-  </section>
-</section>
+    <section class="hero" data-route="/">
+      <div>
+        <h1 class="title">HTML + CSS + JavaScriptだけで動く<br/>シンプル検定サイト</h1>
+        <p>会員ログイン、検定スタート、問題表示、採点、合格証の発行までをフロントエンドのみで完結。サーバー不要で、そのまま静的ホスティングにアップできます。</p>
+        <div class="cta">
+          <a class="btn primary" href="#/login">会員ログイン</a>
+          <a class="btn" href="#/exam">検定ページへ</a>
+        </div>
+        <p class="muted" style="margin-top:10px">※ データはブラウザの <code>localStorage</code> に保存されます。</p>
+      </div>
+      <div class="card pad">
+        <h3 style="margin-top:0">機能一覧</h3>
+        <ul>
+          <li>会員ログイン（名前だけの簡易版）</li>
+          <li>検定の説明と開始</li>
+          <li>単一/複数選択の問題表示（サンプル）</li>
+          <li>進捗バー・前へ/次へ</li>
+          <li>採点・合否判定（合格ライン 80%）</li>
+          <li>合格証の自動生成（Canvas画像でダウンロード可）</li>
+        </ul>
+      </div>
+    </section>
 
     <!-- Login -->
     <section class="card pad" data-route="/login" style="display:none">
@@ -158,4 +117,3 @@
   <script src="app.js" defer></script>
 </body>
 </html>
-
