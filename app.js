@@ -21,7 +21,6 @@ if(key === "/certificate") renderCertificate();
 }
 window.addEventListener("hashchange", navigate);
 
-
 // -----------------------------
 // 問題データ
 // -----------------------------
@@ -51,7 +50,6 @@ choices:["document.getElementById('app')", "$('#app')", "document.query('#app')"
 
 const PASSING_SCORE = 80; // 合格ライン
 
-
 // -----------------------------
 // 状態管理
 // -----------------------------
@@ -76,7 +74,6 @@ state.answers = {}; state.current = 0; state.score = null; save();
 $("#resultBox").className = "result"; $("#resultBox").textContent = "";
 }
 
-
 // -----------------------------
 // ユーザー表示
 // -----------------------------
@@ -91,4 +88,219 @@ badge.textContent = "未ログイン";
 logout.style.display = "none";
 }
 }
+
+
+$("#logoutBtn").addEventListener("click", ()=>{
+state.user = null; state.passedAt = null; save(); updateUserBadge();
+alert("ログアウトしました"); location.hash = "#/";
+})
+
+
+// -----------------------------
+// ログイン
+// -----------------------------
+$("#loginForm").addEventListener("submit", (e)=>{
+e.preventDefault();
+const name = e.target.name.value.trim();
+if(!name){ alert("名前を入力してください"); return; }
+state.user = { name };
+save(); updateUserBadge();
+alert("ログインしました");
+location.hash = "#/exam";
+})
+
+// -----------------------------
+// 検定UI
+// -----------------------------
+const total = QUESTIONS.length; $("#totalCount").textContent = total;
+
+
+function renderQuestion(){
+const q = QUESTIONS[state.current];
+$("#qTitle").textContent = `Q${state.current+1}. ${q.title}`;
+$("#qText").textContent = q.text;
+
+
+const list = $("#choiceList");
+list.innerHTML = "";
+q.choices.forEach((c, i)=>{
+const id = `q${q.id}-c${i}`;
+const lab = document.createElement("label"); lab.className = "choice";
+lab.innerHTML = `<input type="radio" name="q${q.id}" value="${i}" aria-labelledby="${id}"> <span id="${id}">${c}</span>`;
+list.appendChild(lab);
+})
+
+
+// 既存解答を復元
+const saved = state.answers[q.id];
+if(typeof saved === 'number'){
+const el = list.querySelector(`input[value="${saved}"]`); if(el) el.checked = true;
+}
+
+
+// ページ情報
+$("#pageInfo").textContent = `${state.current+1} / ${total}`;
+$("#progressBar").style.width = `${((state.current)/ (total)) * 100}%`;
+
+// ボタン表示
+$("#prevBtn").disabled = state.current===0;
+$("#nextBtn").style.display = state.current < total-1 ? "inline-flex" : "none";
+$("#submitBtn").style.display = state.current === total-1 ? "inline-flex" : "none";
+}
+
+
+function ensureLogin(){
+if(!state.user){
+if(confirm("ログインしてから開始しますか？")) location.hash = "#/login";
+return false;
+}
+return true;
+}
+
+
+$("#startExamBtn").addEventListener("click", ()=>{
+if(!ensureLogin()) return;
+resetExam();
+$("#questionArea").style.display = "block";
+renderQuestion();
+})
+
+
+$("#prevBtn").addEventListener("click", ()=>{
+saveSelection();
+if(state.current>0){ state.current--; renderQuestion(); }
+})
+$("#nextBtn").addEventListener("click", ()=>{
+if(!saveSelection()) return;
+if(state.current<total-1){ state.current++; renderQuestion(); }
+})
+
+
+function saveSelection(){
+const q = QUESTIONS[state.current];
+const checked = $(`input[name="q${q.id}"]:checked`);
+if(!checked){ alert("選択してください"); return false; }
+state.answers[q.id] = Number(checked.value); save();
+return true;
+}
+
+
+$("#submitBtn").addEventListener("click", () => {
+  if (!saveSelection()) return;
+
+  // 採点
+  let correct = 0;
+  for (const q of QUESTIONS) {
+    if (typeof state.answers[q.id] !== "number") continue;
+    if (q.answer.includes(state.answers[q.id])) correct++;
+  }
+  const score = Math.round((correct / total) * 100);
+  state.score = score;
+
+  const box = $("#resultBox");
+  box.className = "result " + (score >= PASSING_SCORE ? "pass" : "fail");
+  box.innerHTML =
+    score >= PASSING_SCORE
+      ? `<strong>合格！</strong> おめでとうございます。スコア：<strong>${score}点</strong>。<br>合格証ページから証書をダウンロードできます。`
+      : `<strong>残念！</strong> スコア：<strong>${score}点</strong>。80点以上で合格です。もう一度挑戦しましょう！`;
+
+  if (score >= PASSING_SCORE) {
+    state.passedAt = new Date().toISOString();
+    save();
+  }
+  $("#progressBar").style.width = "100%";
+});
+// -----------------------------
+// 合格証の生成(Canvas)
+// -----------------------------
+function renderCertificate(){
+const canvas = $("#certCanvas"); if(!canvas) return;
+const ctx = canvas.getContext("2d");
+// 背景
+const w = canvas.width, h = canvas.height;
+const grd = ctx.createLinearGradient(0,0,w,h);
+grd.addColorStop(0, "#1b2555"); grd.addColorStop(.5, "#20306f"); grd.addColorStop(1, "#243a84");
+ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
+
+
+// 額縁
+ctx.strokeStyle = "#c6d2ff"; ctx.lineWidth = 10; ctx.strokeRect(30,30,w-60,h-60);
+ctx.strokeStyle = "#9bb5ff"; ctx.lineWidth = 2; ctx.strokeRect(50,50,w-100,h-100);
+
+
+// タイトル
+ctx.fillStyle = "#ffffff";
+ctx.font = "bold 64px system-ui, sans-serif"; ctx.textAlign = "center";
+ctx.fillText("CERTIFICATE", w/2, 160);
+ctx.font = "28px system-ui, sans-serif"; ctx.fillStyle = "#cfe1ff";
+ctx.fillText("合格証書", w/2, 205);
+
+
+// 受験者名
+const name = state.user?.name || "（未ログイン）";
+ctx.fillStyle = "#ffffff"; ctx.font = "48px system-ui, sans-serif";
+ctx.fillText(name, w/2, 315);
+
+
+// 本文
+ctx.font = "24px system-ui, sans-serif"; ctx.fillStyle = "#deecff";
+const lines = [
+"あなたは当サイトのフロントエンド基礎検定において、",
+"所定の基準を満たす成績を収めたことをここに証します。"
+];
+lines.forEach((t, i)=> ctx.fillText(t, w/2, 370 + i*32));
+
+
+// 成績
+const scoreLine = (state.score!=null) ? `${state.score} 点 / 合格ライン ${PASSING_SCORE} 点` : "スコア情報がありません";
+ctx.font = "26px system-ui, sans-serif"; ctx.fillStyle = "#ffffff";
+ctx.fillText(scoreLine, w/2, 450);
+
+// 日付・ID
+const dt = state.passedAt ? new Date(state.passedAt) : new Date();
+const dateStr = `${dt.getFullYear()}年${String(dt.getMonth()+1).padStart(2,'0')}月${String(dt.getDate()).padStart(2,'0')}日`;
+ctx.font = "22px system-ui, sans-serif"; ctx.fillStyle = "#cfe1ff";
+ctx.fillText(`発行日：${dateStr}`, w/2, 490);
+
+
+// シール
+const cx = w - 210, cy = h - 210;
+const g2 = ctx.createRadialGradient(cx-30, cy-30, 10, cx, cy, 120);
+g2.addColorStop(0, "#ffe08a"); g2.addColorStop(1, "#d99100");
+ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx, cy, 110, 0, Math.PI*2); ctx.fill();
+ctx.fillStyle = "#5a3d00"; ctx.font = "bold 44px system-ui, sans-serif"; ctx.textAlign = "center";
+ctx.fillText("PASS", cx, cy+15);
+
+
+// 署名
+ctx.font = "20px system-ui, sans-serif"; ctx.fillStyle = "#cfe1ff"; ctx.textAlign = "left";
+ctx.fillText("発行者：検定ポータル運営", 90, h-120);
+
+
+// ダウンロードリンク更新
+const link = $("#downloadCert");
+link.href = canvas.toDataURL("image/png");
+}
+
+
+$("#renderCertBtn").addEventListener("click", renderCertificate);
+
+
+// 年表示
+$("#year").textContent = new Date().getFullYear();
+
+
+// 初期表示
+updateUserBadge();
+navigate();
+
+
+// 検定ページ直リンク対策：ロード時にプログレスバー初期化
 $("#progressBar").style.width = "0%";
+// 初期化の最後
+document.querySelector("#year").textContent = new Date().getFullYear();
+updateUserBadge();
+navigate();
+document.querySelector("#progressBar").style.width = "0%";
+
+
