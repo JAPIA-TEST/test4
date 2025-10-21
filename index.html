@@ -1,119 +1,83 @@
+
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>検定サイト（HTML+CSS+JSのみ）</title>
+<li>単一/複数選択の問題表示（サンプル）</li>
+<li>進捗バー・前へ/次へ</li>
+<li>採点・合否判定（合格ライン 80%）</li>
+<li>合格証の自動生成（Canvas画像でダウンロード可）</li>
+</ul>
+</div>
+</section>
 
-  <!-- GitHub Pages(プロジェクトサイト)は /test4/ がルート -->
-  <link rel="icon" type="image/svg+xml" href="/test4/favicon.svg">
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body id="app-root">
-  <header>
-    <nav class="nav">
-      <div class="brand">
-        <span class="logo">🏅</span>
-        <span>検定ポータル</span>
-      </div>
-      <a href="#/" data-link>ホーム</a>
-      <a href="#/exam" data-link>検定ページ</a>
-      <a href="#/certificate" data-link>合格証書</a>
-      <span class="spacer"></span>
-      <span id="userBadge" class="tag">未ログイン</span>
-      <button class="btn" id="logoutBtn" style="display:none">ログアウト</button>
-    </nav>
-  </header>
 
-  <main>
-    <!-- Home -->
-    <section class="hero" data-route="/">
-      <div>
-        <h1 class="title">HTML + CSS + JavaScriptだけで動く<br/>シンプル検定サイト</h1>
-        <p>会員ログイン、検定スタート、問題表示、採点、合格証の発行までをフロントエンドのみで完結。サーバー不要で、そのまま静的ホスティングにアップできます。</p>
-        <div class="cta">
-          <a class="btn primary" href="#/login">会員ログイン</a>
-          <a class="btn" href="#/exam">検定ページへ</a>
-        </div>
-        <p class="muted" style="margin-top:10px">※ データはブラウザの <code>localStorage</code> に保存されます。</p>
-      </div>
-      <div class="card pad">
-        <h3 style="margin-top:0">機能一覧</h3>
-        <ul>
-          <li>会員ログイン（名前だけの簡易版）</li>
-          <li>検定の説明と開始</li>
-          <li>単一/複数選択の問題表示（サンプル）</li>
-          <li>進捗バー・前へ/次へ</li>
-          <li>採点・合否判定（合格ライン 80%）</li>
-          <li>合格証の自動生成（Canvas画像でダウンロード可）</li>
-        </ul>
-      </div>
-    </section>
+<!-- Login -->
+<section class="card pad" data-route="/login" style="display:none">
+<h2 style="margin-top:0">会員ログイン</h2>
+<form id="loginForm">
+<div>
+<label for="name">お名前（証書に印字されます）</label>
+<input id="name" name="name" type="text" placeholder="例）山田 太郎" required />
+</div>
+<div class="row">
+<button type="submit" class="btn primary">ログイン</button>
+<span class="muted">※ パスワード不要のデモ仕様</span>
+</div>
+</form>
+</section>
 
-    <!-- Login -->
-    <section class="card pad" data-route="/login" style="display:none">
-      <h2 style="margin-top:0">会員ログイン</h2>
-      <form id="loginForm">
-        <div>
-          <label for="name">お名前（証書に印字されます）</label>
-          <input id="name" name="name" type="text" placeholder="例）山田 太郎" required />
-        </div>
-        <div class="row">
-          <button type="submit" class="btn primary">ログイン</button>
-          <span class="muted">※ パスワード不要のデモ仕様</span>
-        </div>
-      </form>
-    </section>
 
-    <!-- Exam -->
-    <section class="card pad" data-route="/exam" style="display:none">
-      <div class="row" style="justify-content:space-between; gap:12px">
-        <h2 style="margin:0">検定ページ</h2>
-        <span class="tag">合格ライン：80点</span>
-      </div>
-      <p class="muted">以下のボタンから検定を開始してください。問題は全部で <span id="totalCount">0</span> 問です。</p>
-      <div class="row">
-        <button class="btn primary" id="startExamBtn">検定を開始</button>
-        <a class="btn" href="#/certificate">合格証を見る</a>
-      </div>
-      <hr style="border-color: rgba(255,255,255,.12)"/>
-      <div class="progress"><span id="progressBar"></span></div>
+<!-- Exam Intro -->
+<section class="card pad" data-route="/exam" style="display:none">
+<div class="row" style="justify-content:space-between; gap:12px">
+<h2 style="margin:0">検定ページ</h2>
+<span class="tag">合格ライン：80点</span>
+</div>
+<p class="muted">以下のボタンから検定を開始してください。問題は全部で <span id="totalCount">0</span> 問です。</p>
+<div class="row">
+<button class="btn primary" id="startExamBtn">検定を開始</button>
+<a class="btn" href="#/certificate">合格証を見る</a>
+</div>
+<hr style="border-color: rgba(255,255,255,.12)"/>
+<div class="progress"><span id="progressBar"></span></div>
 
-      <div id="questionArea" style="margin-top:16px; display:none">
-        <div class="question">
-          <h3 id="qTitle">問題タイトル</h3>
-          <p id="qText" class="muted" style="margin:.3rem 0 1rem"></p>
-          <div class="choices" id="choiceList"></div>
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn" id="prevBtn">前へ</button>
-          <div class="spacer"></div>
-          <span class="muted" id="pageInfo">1 / 1</span>
-          <button class="btn" id="nextBtn">次へ</button>
-          <button class="btn good" id="submitBtn" style="display:none">採点する</button>
-        </div>
-        <div class="result" id="resultBox"></div>
-      </div>
-    </section>
 
-    <!-- Certificate -->
-    <section class="card pad" data-route="/certificate" style="display:none">
-      <h2 style="margin-top:0">合格証書</h2>
-      <p class="muted">合格後に自動生成されます。ログイン名・日付・点数が印字されます。</p>
-      <div id="certWrap" style="display:grid; gap:12px">
-        <canvas id="certCanvas" width="1200" height="850" aria-label="合格証書プレビュー"></canvas>
-        <div class="row">
-          <button class="btn" id="renderCertBtn">再生成</button>
-          <a id="downloadCert" class="btn primary" download="certificate.png">画像をダウンロード</a>
-          <span class="spacer"></span>
-          <a class="btn" href="#/exam">検定に戻る</a>
-        </div>
-      </div>
-    </section>
-  </main>
+<div id="questionArea" style="margin-top:16px; display:none">
+<div class="question">
+<h3 id="qTitle">問題タイトル</h3>
+<p id="qText" class="muted" style="margin:.3rem 0 1rem"></p>
+<div class="choices" id="choiceList"></div>
+</div>
+<div class="row" style="margin-top:12px">
+<button class="btn" id="prevBtn">前へ</button>
+<div class="spacer"></div>
+<span class="muted" id="pageInfo">1 / 1</span>
+<button class="btn" id="nextBtn">次へ</button>
+<button class="btn good" id="submitBtn" style="display:none">採点する</button>
+</div>
+<div class="result" id="resultBox"></div>
+</div>
+</section>
 
-  <footer>© <span id="year"></span> 検定ポータル. HTML+CSS+JSのみで構築。</footer>
 
-  <script src="app.js" defer></script>
+<!-- Certificate -->
+<section class="card pad" data-route="/certificate" style="display:none">
+<h2 style="margin-top:0">合格証書</h2>
+<p class="muted">合格後に自動生成されます。ログイン名・日付・点数が印字されます。</p>
+<div id="certWrap" style="display:grid; gap:12px">
+<canvas id="certCanvas" width="1200" height="850" aria-label="合格証書プレビュー"></canvas>
+<div class="row">
+<button class="btn" id="renderCertBtn">再生成</button>
+<a id="downloadCert" class="btn primary" download="certificate.png">画像をダウンロード</a>
+<span class="spacer"></span>
+<a class="btn" href="#/exam">検定に戻る</a>
+</div>
+</div>
+</section>
+</main>
+
+
+<footer>© <span id="year"></span> 検定ポータル. HTML+CSS+JSのみで構築。</footer>
+
+
+<script src="app.js" defer></script>
 </body>
 </html>
