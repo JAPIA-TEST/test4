@@ -11,13 +11,25 @@ $$(".nav a[data-link]").forEach(a=>{
 a.classList.toggle("active", a.getAttribute("href") === location.hash || (location.hash==="#/" && a.getAttribute("href")==="#/"));
 })
 }
+
 function navigate(){
-const hash = location.hash || "#/";
-Object.values(routes).forEach(sec => sec.style.display = "none");
-const key = hash.replace(/^#/, "");
-(routes[key] || routes["/"]).style.display = "grid";
-setActiveLink();
-if(key === "/certificate") renderCertificate();
+  const hash = location.hash || "#/";
+  const key = hash.replace(/^#/, "");
+
+  // normalize: /exam/g1..g4 should show /exam section
+  const targetKey = key.startsWith("/exam/g") ? "/exam" : key;
+
+  Object.values(routes).forEach(sec => sec.style.display = "none");
+  (routes[targetKey] || routes["/"]).style.display = targetKey === "/" ? "grid" : "block";
+  setActiveLink();
+
+  if (key === "/certificate") renderCertificate();
+  const m = key.match(/^\/exam\/g([1-4])$/);
+  if (m) {
+    const g = parseInt(m[1],10);
+    // slight delay to ensure DOM is painted
+    setTimeout(()=> startExamForGrade(g), 0);
+  }
 }
 window.addEventListener("hashchange", navigate);
 
@@ -112,9 +124,10 @@ location.hash = "#/exam";
 // -----------------------------
 // 検定UI
 // -----------------------------
-let total = QUESTIONS.length;
+let ACTIVE = QUESTIONS;
+let total = ACTIVE.length;
 function refreshTotal(){
-  total = QUESTIONS.length;
+  total = ACTIVE.length;
   const el = document.getElementById("totalCount");
   if (el) el.textContent = String(total);
 }
@@ -122,8 +135,8 @@ refreshTotal();
 
 
 function renderQuestion(){
-const q = QUESTIONS[state.current];
-$("#qTitle").textContent = `Q${state.current+1}. ${q.title}`;
+const q = ACTIVE[state.current];
+$("#qTitle").textContent = `Q${state.current+1}. ${q.title} ${q.grade ? "（" + q.grade + "級）" : ""}`;
 $("#qText").textContent = q.text;
 
 
@@ -166,9 +179,7 @@ return true;
 
 $("#startExamBtn").addEventListener("click", ()=>{
 if(!ensureLogin()) return;
-resetExam();
-$("#questionArea").style.display = "block";
-renderQuestion();
+resetExam(); ACTIVE = QUESTIONS; refreshTotal(); $("#questionArea").style.display = "block"; renderQuestion(); startCountdown(4);
 })
 
 
@@ -183,7 +194,7 @@ if(state.current<total-1){ state.current++; renderQuestion(); }
 
 
 function saveSelection(){
-const q = QUESTIONS[state.current];
+const q = ACTIVE[state.current];
 const checked = $(`input[name="q${q.id}"]:checked`);
 if(!checked){ alert("選択してください"); return false; }
 state.answers[q.id] = Number(checked.value); save();
@@ -196,7 +207,7 @@ $("#submitBtn").addEventListener("click", () => {
 
   // 採点
   let correct = 0;
-  for (const q of QUESTIONS) {
+  for (const q of ACTIVE) {
     if (typeof state.answers[q.id] !== "number") continue;
     if (q.answer.includes(state.answers[q.id])) correct++;
   }
@@ -334,12 +345,12 @@ function parseCSV(str){
 }
 
 // 2) rows → 既存UIの QUESTIONS 形式へ（列名はゆるく対応）
+
 function rowsToQuestions(rows){
   if(!rows.length) return [];
   const header = rows[0].map(h => String(h||'').trim());
   const norm = s => String(s||'').toLowerCase().replace(/\s+/g,'').replace(/　/g,'');
   const findAny = keys => header.findIndex(h => keys.some(k => norm(h).includes(k)));
-
   const col = {
     q:      findAny(['question','問題','設問','問','q']),
     c1:     findAny(['choice1','選択肢1','a)']),
@@ -351,40 +362,22 @@ function rowsToQuestions(rows){
     answer: findAny(['answer','正解','解答','ans']),
     grade:  findAny(['grade','級','レベル','level','等級'])
   };
-
   const hasHeader = col.q !== -1 && (col.c1 !== -1 || col.c2 !== -1);
   const start = hasHeader ? 1 : 0;
-
   const toHalf = s => String(s||'').replace(/[０-９]/g, d => String.fromCharCode(d.charCodeAt(0)-0xFEE0));
-
-  const list=[];
+  const list = [];
   for(let r=start; r<rows.length; r++){
     const row = rows[r], get = i => (i>=0 && i<row.length) ? String(row[i]||'').trim() : '';
     const text = get(col.q); if(!text) continue;
     const choices = [get(col.c1),get(col.c2),get(col.c3),get(col.c4),get(col.c5),get(col.c6)].filter(Boolean);
     if(choices.length < 2) continue;
-
-    const ansRaw = toHalf(get(col.answer) || '1');
-    const m = ansRaw.match(/\d+/);
+    const ansRaw = toHalf(get(col.answer) || '1'); const m = ansRaw.match(/\d+/);
     const ansIndex = m ? Math.max(0, parseInt(m[0],10) - 1) : 0;
-
-    const gRaw = toHalf(get(col.grade) || '4');
-    const gMatch = gRaw && gRaw.match(/[1-4]/);
-    const grade = gMatch ? parseInt(gMatch[0],10) : 4;
-
-    list.push({
-      id: r,
-      title: `Q${r}`,
-      text,
-      type: 'single',
-      choices,
-      answer: [ansIndex],
-      grade
-    });
+    const gRaw = toHalf(get(col.grade) || '4'); const g = (gRaw.match(/[1-4]/) ? parseInt(gRaw.match(/[1-4]/)[0],10) : 4);
+    list.push({ id: r, title:`Q${r}`, text, type:'single', choices, answer:[ansIndex], grade:g });
   }
   return list;
 }
-
 // 3) ファイル読込 → QUESTIONS 差し替え
 async function importCsvFile(file){
   const buf = await file.arrayBuffer();
@@ -407,7 +400,7 @@ async function importCsvFile(file){
   // 上書き
   QUESTIONS = imported;
 
-  updateGradeStats(); // 件数を最新化
+  // 件数を最新化
   if (typeof refreshTotal === 'function') refreshTotal();
   else {
     // フォールバック
@@ -493,7 +486,7 @@ async function __autoLoadCsvOnce(){
       if (Array.isArray(imported) && imported.length) {
         // 既存の問題配列を置き換え
         QUESTIONS = imported;
-        updateGradeStats(); if (typeof refreshTotal === "function") refreshTotal();
+        if (typeof refreshTotal === "function") refreshTotal();
         const s = document.getElementById("csvStatus");
         if (s) s.textContent = `自動読込：${QUESTIONS.length}問（${url.split("/").pop()}）`;
         __csvAutoLoaded = true;
@@ -516,12 +509,50 @@ window.addEventListener("hashchange", () => {
 });
 
 
-function updateGradeStats(){
-  const c = {1:0,2:0,3:0,4:0};
-  (QUESTIONS || []).forEach(q => { const g = Number(q.grade || 4); if (c[g] != null) c[g]++; });
-  const el = document.getElementById('gradeStats');
-  if (el) el.textContent = `級の内訳: 1級${c[1]} / 2級${c[2]} / 3級${c[3]} / 4級${c[4]}`;
+// === Grade-based exam and timer ===
+const TIME_LIMIT_MIN = {1:30, 2:25, 3:20, 4:15};
+let _deadlineTs = null;
+let _hudTimer = null;
+
+function fmt2(n){ return (n<10?'0':'') + n; }
+function fmtMMSS(secs){ secs = Math.max(0, secs|0); return `${fmt2(Math.floor(secs/60))}:${fmt2(secs%60)}`; }
+
+function startCountdown(grade){
+  const min = TIME_LIMIT_MIN[grade] || 20;
+  _deadlineTs = Date.now() + min*60*1000;
+  if (_hudTimer) clearInterval(_hudTimer);
+  _hudTimer = setInterval(updateHud, 500);
+  updateHud();
+}
+function stopCountdown(){
+  if (_hudTimer){ clearInterval(_hudTimer); _hudTimer = null; }
+  _deadlineTs = null;
+}
+function updateHud(){
+  const tEl = document.getElementById('hudTime');
+  const rEl = document.getElementById('hudRemain');
+  const secs = _deadlineTs ? Math.max(0, Math.floor((_deadlineTs - Date.now())/1000)) : 0;
+  if (tEl) tEl.textContent = '残り時間: ' + fmtMMSS(secs);
+  if (rEl) {
+    const answered = Object.keys(state.answers||{}).length;
+    rEl.textContent = '残り問題数: ' + Math.max(0, total - answered);
+  }
+  if (secs <= 0 && _deadlineTs){ // time up
+    stopCountdown();
+    // 自動採点へ
+    try { document.getElementById('submitBtn')?.click(); } catch(e){}
+  }
 }
 
+function startExamForGrade(grade){
+  if(!ensureLogin()) return;
+  // フィルタ
+  ACTIVE = (QUESTIONS || []).filter(q => Number(q.grade||4) === Number(grade));
+  if (!ACTIVE.length){ alert(`${grade}級の問題が0件です。CSVを確認してください。`); ACTIVE = QUESTIONS; }
+  state.answers = {}; state.current = 0; state.score = null; save();
+  document.getElementById('questionArea').style.display = 'block';
+  refreshTotal();
+  renderQuestion();
+  startCountdown(grade);
+}
 
-document.addEventListener('DOMContentLoaded', ()=>{ updateGradeStats(); });
