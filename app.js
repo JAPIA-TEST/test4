@@ -564,11 +564,4 @@ function startExamForGrade(grade){
   renderQuestion();
   startCountdown(grade);
 }
-級の問題が0件です。CSVを確認してください。`); ACTIVE = QUESTIONS; }
-  state.answers = {}; state.current = 0; state.score = null; save();
-  document.getElementById('questionArea').style.display = 'block';
-  refreshTotal();
-  renderQuestion();
-  startCountdown(grade);
-}
 
