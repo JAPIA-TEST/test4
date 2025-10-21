@@ -12,27 +12,33 @@ a.classList.toggle("active", a.getAttribute("href") === location.hash || (locati
 })
 }
 
+
 function navigate(){
   const hash = location.hash || "#/";
   const key = hash.replace(/^#/, "");
 
-  // normalize: /exam/g1..g4 should show /exam section
-  const targetKey = key.startsWith("/exam/g") ? "/exam" : key;
+  // Normalize grade routes
+  const targetKey = (key.startsWith("/exam/g") || key.startsWith("/play/g")) ? (key.startsWith("/play")? "/play" : "/exam") : key;
 
   Object.values(routes).forEach(sec => sec.style.display = "none");
   (routes[targetKey] || routes["/"]).style.display = targetKey === "/" ? "grid" : "block";
   setActiveLink();
 
   if (key === "/certificate") renderCertificate();
-  const m = key.match(/^\/exam\/g([1-4])$/);
+
+  // Start exam for grade if visiting /exam/gN or /play/gN
+  const m = key.match(/^\/(?:exam|play)\/g([1-4])$/);
   if (m) {
     const g = parseInt(m[1],10);
-    // slight delay to ensure DOM is painted
-    setTimeout(()=> startExamForGrade(g), 0);
+    setTimeout(()=> {
+      startExamForGrade(g);
+      if (location.hash !== "#/play") location.hash = "#/play";
+      const qa = document.getElementById('questionArea');
+      if (qa) qa.style.display = 'block';
+    }, 0);
   }
 }
 window.addEventListener("hashchange", navigate);
-
 // -----------------------------
 // 問題データ
 // -----------------------------
@@ -179,7 +185,7 @@ return true;
 
 $("#startExamBtn").addEventListener("click", ()=>{
 if(!ensureLogin()) return;
-resetExam(); ACTIVE = QUESTIONS; refreshTotal(); $("#questionArea").style.display = "block"; renderQuestion(); startCountdown(4);
+resetExam(); ACTIVE = QUESTIONS; refreshTotal(); if (location.hash !== "#/play") location.hash = "#/play"; $("#questionArea").style.display = "block"; renderQuestion(); startCountdown(4);
 })
 
 
@@ -544,11 +550,21 @@ function updateHud(){
   }
 }
 
+
 function startExamForGrade(grade){
   if(!ensureLogin()) return;
   // フィルタ
   ACTIVE = (QUESTIONS || []).filter(q => Number(q.grade||4) === Number(grade));
   if (!ACTIVE.length){ alert(`${grade}級の問題が0件です。CSVを確認してください。`); ACTIVE = QUESTIONS; }
+  state.answers = {}; state.current = 0; state.score = null; save();
+  if (location.hash !== "#/play") location.hash = "#/play";
+  const qa = document.getElementById('questionArea');
+  if (qa) qa.style.display = 'block';
+  refreshTotal();
+  renderQuestion();
+  startCountdown(grade);
+}
+級の問題が0件です。CSVを確認してください。`); ACTIVE = QUESTIONS; }
   state.answers = {}; state.current = 0; state.score = null; save();
   document.getElementById('questionArea').style.display = 'block';
   refreshTotal();
