@@ -348,7 +348,8 @@ function rowsToQuestions(rows){
     c4:     findAny(['choice4','選択肢4','d)']),
     c5:     findAny(['choice5','選択肢5','e)']),
     c6:     findAny(['choice6','選択肢6','f)']),
-    answer: findAny(['answer','正解','解答','ans'])
+    answer: findAny(['answer','正解','解答','ans']),
+    grade:  findAny(['grade','級','レベル','level','等級'])
   };
 
   const hasHeader = col.q !== -1 && (col.c1 !== -1 || col.c2 !== -1);
@@ -363,13 +364,22 @@ function rowsToQuestions(rows){
     const choices = [get(col.c1),get(col.c2),get(col.c3),get(col.c4),get(col.c5),get(col.c6)].filter(Boolean);
     if(choices.length < 2) continue;
 
-    let ansRaw = toHalf(get(col.answer) || '1');
+    const ansRaw = toHalf(get(col.answer) || '1');
     const m = ansRaw.match(/\d+/);
     const ansIndex = m ? Math.max(0, parseInt(m[0],10) - 1) : 0;
 
+    const gRaw = toHalf(get(col.grade) || '4');
+    const gMatch = gRaw && gRaw.match(/[1-4]/);
+    const grade = gMatch ? parseInt(gMatch[0],10) : 4;
+
     list.push({
-      id: r, title: `Q${r}`, text, type:'single',
-      choices, answer:[ansIndex]
+      id: r,
+      title: `Q${r}`,
+      text,
+      type: 'single',
+      choices,
+      answer: [ansIndex],
+      grade
     });
   }
   return list;
@@ -397,7 +407,7 @@ async function importCsvFile(file){
   // 上書き
   QUESTIONS = imported;
 
-  // 件数を最新化
+  updateGradeStats(); // 件数を最新化
   if (typeof refreshTotal === 'function') refreshTotal();
   else {
     // フォールバック
@@ -483,7 +493,7 @@ async function __autoLoadCsvOnce(){
       if (Array.isArray(imported) && imported.length) {
         // 既存の問題配列を置き換え
         QUESTIONS = imported;
-        if (typeof refreshTotal === "function") refreshTotal();
+        updateGradeStats(); if (typeof refreshTotal === "function") refreshTotal();
         const s = document.getElementById("csvStatus");
         if (s) s.textContent = `自動読込：${QUESTIONS.length}問（${url.split("/").pop()}）`;
         __csvAutoLoaded = true;
@@ -504,3 +514,14 @@ document.addEventListener("DOMContentLoaded", () => {
 window.addEventListener("hashchange", () => {
   if (location.hash === "#/exam") __autoLoadCsvOnce();
 });
+
+
+function updateGradeStats(){
+  const c = {1:0,2:0,3:0,4:0};
+  (QUESTIONS || []).forEach(q => { const g = Number(q.grade || 4); if (c[g] != null) c[g]++; });
+  const el = document.getElementById('gradeStats');
+  if (el) el.textContent = `級の内訳: 1級${c[1]} / 2級${c[2]} / 3級${c[3]} / 4級${c[4]}`;
+}
+
+
+document.addEventListener('DOMContentLoaded', ()=>{ updateGradeStats(); });
